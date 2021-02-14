@@ -86,7 +86,6 @@ mod filterlog_tests {
     use super::{extract_fields,parse_log};
     use usiem::events::{SiemLog};
     use usiem::events::field::{SiemField,SiemIp};
-    use std::borrow::Cow;
 
     #[test]
     fn test_extract_fields() {
@@ -113,11 +112,11 @@ mod filterlog_tests {
                 );
                 assert_eq!(
                     log.field("source.ip"),
-                    Some(&SiemField::IP(SiemIp::from_ip_str(Cow::Borrowed("192.168.2.1")).unwrap()))
+                    Some(&SiemField::IP(SiemIp::from_ip_str("192.168.2.1").unwrap()))
                 );
                 assert_eq!(
                     log.field("destination.ip"),
-                    Some(&SiemField::IP(SiemIp::from_ip_str(Cow::Borrowed("192.168.3.2")).unwrap()))
+                    Some(&SiemField::IP(SiemIp::from_ip_str("192.168.3.2").unwrap()))
                 );
             }
             Err(_) => assert_eq!(1, 0),

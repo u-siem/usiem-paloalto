@@ -20,14 +20,14 @@ pub fn paloalto_firewall<'a>(
         None => return Err(log),
     };
     let source_ip = match field_map.get(6) {
-        Some(srcip) => match SiemIp::from_ip_str(srcip.to_string()) {
+        Some(srcip) => match SiemIp::from_ip_str(*srcip) {
             Ok(srcip) => srcip,
             Err(_) => return Err(log),
         },
         None => return Err(log),
     };
     let destination_ip = match field_map.get(7) {
-        Some(destination_ip) => match SiemIp::from_ip_str(destination_ip.to_string()) {
+        Some(destination_ip) => match SiemIp::from_ip_str(*destination_ip) {
             Ok(destination_ip) => destination_ip,
             Err(_) => return Err(log),
         },
