@@ -1,4 +1,5 @@
-# usiem-paloalto
+![Rust](https://github.com/u-siem/usiem-paloalto/workflows/Rust/badge.svg)
+# uSIEM PaloAlto Firewall
 uSIEM parser for PaloAlto Firewall 
 
 Documentation: https://docs.paloaltonetworks.com/pan-os/8-1/pan-os-admin/monitoring/use-syslog-for-monitoring/syslog-field-descriptions
