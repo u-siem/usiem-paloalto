@@ -4,11 +4,12 @@ use usiem::events::field::{SiemField, SiemIp};
 use usiem::events::firewall::{FirewallEvent, FirewallOutcome};
 use usiem::events::protocol::NetworkProtocol;
 use usiem::events::{SiemLog,SiemEvent};
+use usiem::components::common::LogParsingError;
 
 pub fn paloalto_firewall<'a>(
     field_map: Vec<&'a str>,
     mut log: SiemLog,
-) -> Result<SiemLog, SiemLog> {
+) -> Result<SiemLog, LogParsingError> {
     let event_outcome = match field_map.get(3) {
         Some(outcome) => match *outcome {
             "deny" => FirewallOutcome::BLOCK,
@@ -17,21 +18,21 @@ pub fn paloalto_firewall<'a>(
             "end" => FirewallOutcome::END,
             _ => FirewallOutcome::UNKNOWN,
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     let source_ip = match field_map.get(6) {
         Some(srcip) => match SiemIp::from_ip_str(*srcip) {
             Ok(srcip) => srcip,
-            Err(_) => return Err(log),
+            Err(_) => return Err(LogParsingError::ParserError(log)),
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     let destination_ip = match field_map.get(7) {
         Some(destination_ip) => match SiemIp::from_ip_str(*destination_ip) {
             Ok(destination_ip) => destination_ip,
-            Err(_) => return Err(log),
+            Err(_) => return Err(LogParsingError::ParserError(log)),
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     match field_map.get(11) {
         Some(user) => match *user {
@@ -40,7 +41,7 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("source.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     match field_map.get(12) {
         Some(user) => match *user {
@@ -49,7 +50,7 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("destination.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     match field_map.get(13) {
         Some(app) => match *app {
@@ -59,16 +60,16 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("service.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
 
     let in_interface = match field_map.get(17) {
         Some(source_if) => Cow::Owned((*source_if).to_string()),
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
     let out_interface = match field_map.get(18) {
         Some(destination_if) => Cow::Owned((*destination_if).to_string()),
-        None => return Err(log),
+        None => return Err(LogParsingError::ParserError(log)),
     };
 
     let source_port = field_map.get(23).map(|c| (*c).parse::<u16>().unwrap_or(0)).unwrap_or(0);
@@ -87,9 +88,9 @@ pub fn paloalto_firewall<'a>(
                     "reset both" => FirewallOutcome::END,
                     "reset client" => FirewallOutcome::END,
                     "reset server" => FirewallOutcome::END,
-                    _ => return Err(log),
+                    _ => return Err(LogParsingError::ParserError(log)),
                 },
-                None => return Err(log),
+                None => return Err(LogParsingError::ParserError(log)),
             }
         },
         eo => eo
