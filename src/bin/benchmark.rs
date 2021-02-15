@@ -17,6 +17,23 @@ fn main() {
 
     println!("{:?} EPS",1_000_000_000 /now.elapsed().as_millis());
 
-    //EPS: 272034 (09/02/2021)
+    //EPS: 280504 (15/02/2021)
+
+    let now = std::time::Instant::now();
+    for _i in 0..1_000_000{
+        let log = "Aug 5 14:56:46 Ilija-PA-VM-2.al.com 1,2014/08/05 14:56:46,0123456789,THREAT,url,1,2014/08/05 14:56:40,192.168.8.89,173.194.41.175,10.193.17.8,173.194.41.175,allow_all,,,ssl,vsys1,Trust-L3,Untrust-L3,ethernet1/2,ethernet1/1,forward to panorama and splunk,2014/08/05 14:56:46,196863,1,55143,443,52716,443,0x408000,tcp,alert,\"www.google.nl/\",(9999),search-engines,informational,client-to-server,67483,0x0,192.168.0.0-192.168.255.255,US,0,,0,,";
+        let log = SiemLog::new(log.to_string(), 0, SiemIp::V4(0));
+        let siem_log = parsers::parse_log(log);
+        match siem_log {
+            Ok(_log) => {
+               
+            },
+            Err(_) => assert_eq!(1,0)
+        }
+    }
+
+    //EPS: 237473 (15/02/2021)
+
+    println!("{:?} EPS",1_000_000_000 /now.elapsed().as_millis());
     
 }
