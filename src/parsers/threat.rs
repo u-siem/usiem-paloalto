@@ -10,6 +10,12 @@ pub fn paloalto_threat<'a>(
     mut log: SiemLog,
 ) -> Result<SiemLog, LogParsingError> {
 
+    match field_map.get(1) {
+        Some(md) => {
+            log.add_field("observer.id", SiemField::Text(Cow::Owned(md.to_string())));
+        }
+        None => return Err(LogParsingError::NoValidParser(log)),
+    };
     log.set_vendor(Cow::Borrowed("PaloAlto"));
     log.set_product(Cow::Borrowed("PaloAlto"));
     log.set_category(Cow::Borrowed("Firewall"));
