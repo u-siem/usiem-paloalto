@@ -1,15 +1,27 @@
-use chrono::prelude::{TimeZone, Utc};
+use usiem::chrono::prelude::{TimeZone, Utc};
 use std::borrow::Cow;
 use usiem::events::field::{SiemField, SiemIp};
 use usiem::events::firewall::{FirewallEvent, FirewallOutcome};
 use usiem::events::protocol::NetworkProtocol;
 use usiem::events::{SiemLog,SiemEvent};
-use usiem::components::common::LogParsingError;
+use usiem::components::parsing::LogParsingError;
 
 pub fn paloalto_firewall<'a>(
     field_map: Vec<&'a str>,
     mut log: SiemLog,
 ) -> Result<SiemLog, LogParsingError> {
+
+    match field_map.get(1) {
+        Some(md) => {
+            log.add_field("observer.id", SiemField::Text(Cow::Owned(md.to_string())));
+        }
+        None => return Err(LogParsingError::NoValidParser(log)),
+    };
+    
+    log.set_vendor(Cow::Borrowed("PaloAlto"));
+    log.set_product(Cow::Borrowed("PaloAlto"));
+    log.set_category(Cow::Borrowed("Firewall"));
+
     let event_outcome = match field_map.get(3) {
         Some(outcome) => match *outcome {
             "deny" => FirewallOutcome::BLOCK,
@@ -18,21 +30,21 @@ pub fn paloalto_firewall<'a>(
             "end" => FirewallOutcome::END,
             _ => FirewallOutcome::UNKNOWN,
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent event_outcome".to_string())),
     };
     let source_ip = match field_map.get(6) {
         Some(srcip) => match SiemIp::from_ip_str(*srcip) {
             Ok(srcip) => srcip,
-            Err(_) => return Err(LogParsingError::ParserError(log)),
+            Err(_) => return Err(LogParsingError::FormatError(log, "Invalid source.ip".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log,"Nonexistent source.ip".to_string())),
     };
     let destination_ip = match field_map.get(7) {
         Some(destination_ip) => match SiemIp::from_ip_str(*destination_ip) {
             Ok(destination_ip) => destination_ip,
-            Err(_) => return Err(LogParsingError::ParserError(log)),
+            Err(_) => return Err(LogParsingError::FormatError(log, "Invalid destination.ip".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent destination.ip".to_string())),
     };
     match field_map.get(11) {
         Some(user) => match *user {
@@ -41,7 +53,7 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("source.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent source.user.name".to_string())),
     };
     match field_map.get(12) {
         Some(user) => match *user {
@@ -50,7 +62,7 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("destination.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log,"Nonexistent destination.user.name".to_string())),
     };
     match field_map.get(13) {
         Some(app) => match *app {
@@ -60,16 +72,16 @@ pub fn paloalto_firewall<'a>(
                 log.add_field("service.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent service.name".to_string())),
     };
 
     let in_interface = match field_map.get(17) {
         Some(source_if) => Cow::Owned((*source_if).to_string()),
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent source.interface".to_string())),
     };
     let out_interface = match field_map.get(18) {
         Some(destination_if) => Cow::Owned((*destination_if).to_string()),
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::FormatError(log, "Nonexistent destination.interface".to_string())),
     };
 
     let source_port = field_map.get(23).map(|c| (*c).parse::<u16>().unwrap_or(0)).unwrap_or(0);
@@ -88,9 +100,9 @@ pub fn paloalto_firewall<'a>(
                     "reset both" => FirewallOutcome::END,
                     "reset client" => FirewallOutcome::END,
                     "reset server" => FirewallOutcome::END,
-                    _ => return Err(LogParsingError::ParserError(log)),
+                    _ => return Err(LogParsingError::FormatError(log, "Invalid event_outcome".to_string())),
                 },
-                None => return Err(LogParsingError::ParserError(log)),
+                None => return Err(LogParsingError::ParserError(log, "Innexistent event_outcome".to_string())),
             }
         },
         eo => eo

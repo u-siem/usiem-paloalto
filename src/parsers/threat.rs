@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use usiem::components::common::LogParsingError;
+use usiem::components::parsing::LogParsingError;
 use usiem::events::field::{SiemField, SiemIp};
 use usiem::events::intrusion::{IntrusionCategory, IntrusionEvent, IntrusionOutcome};
 use usiem::events::protocol::NetworkProtocol;
@@ -9,9 +9,14 @@ pub fn paloalto_threat<'a>(
     field_map: Vec<&'a str>,
     mut log: SiemLog,
 ) -> Result<SiemLog, LogParsingError> {
+
+    log.set_vendor(Cow::Borrowed("PaloAlto"));
+    log.set_product(Cow::Borrowed("PaloAlto"));
+    log.set_category(Cow::Borrowed("Firewall"));
+
     let subtype = match field_map.get(3) {
         Some(category) => category,
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Less than 3 csv columns".to_string())),
     };
     let event_outcome = match field_map.get(29) {
         Some(event_outcome) => match *event_outcome {
@@ -32,31 +37,31 @@ pub fn paloalto_threat<'a>(
             "override-lockout" => IntrusionOutcome::BLOCKED,
             "override" => IntrusionOutcome::MONITOR,
             "block" => IntrusionOutcome::BLOCKED,
-            _ => return Err(LogParsingError::ParserError(log)),
+            _ => return Err(LogParsingError::FormatError(log, "Invalid event.outcome".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent event.outcome".to_string())),
     };
 
     let source_ip = match field_map.get(6) {
         Some(srcip) => match SiemIp::from_ip_str(*srcip) {
             Ok(srcip) => srcip,
-            Err(_) => return Err(LogParsingError::ParserError(log)),
+            Err(_) => return Err(LogParsingError::ParserError(log, "Invalid source.ip".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Innexistent source.ip".to_string())),
     };
     let destination_ip = match field_map.get(7) {
         Some(destination_ip) => match SiemIp::from_ip_str(*destination_ip) {
             Ok(destination_ip) => destination_ip,
-            Err(_) => return Err(LogParsingError::ParserError(log)),
+            Err(_) => return Err(LogParsingError::ParserError(log, "Invalid destination.ip".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Innexistent destination.ip".to_string())),
     };
     let (rule_name, rule_id) = match field_map.get(31) {
         Some(name) => match extract_rule_info(*name) {
             Ok((name, id)) => (name, id.parse::<u32>().unwrap_or(0)),
-            Err(_) => return Err(LogParsingError::ParserError(log)),
+            Err(_) => return Err(LogParsingError::ParserError(log, "Invalid rule.name and rule.id".to_string())),
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent rule.name and rule.id".to_string())),
     };
 
     match field_map.get(11) {
@@ -66,7 +71,7 @@ pub fn paloalto_threat<'a>(
                 log.add_field("source.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent source.user.name".to_string())),
     };
     match field_map.get(12) {
         Some(user) => match *user {
@@ -75,7 +80,7 @@ pub fn paloalto_threat<'a>(
                 log.add_field("destination.user.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent destination.user.name".to_string())),
     };
     match field_map.get(13) {
         Some(app) => match *app {
@@ -85,7 +90,7 @@ pub fn paloalto_threat<'a>(
                 log.add_field("service.name", SiemField::from_str(v.to_string()));
             }
         },
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent service.name".to_string())),
     };
     match field_map.get(34) {
         Some(val) => {
@@ -293,7 +298,7 @@ pub fn paloalto_threat<'a>(
                 );
             }
         }
-        None => return Err(LogParsingError::ParserError(log)),
+        None => return Err(LogParsingError::ParserError(log, "Nonexistent file_url field".to_string())),
     };
 
     let event = IntrusionEvent {
